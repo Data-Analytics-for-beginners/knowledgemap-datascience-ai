@@ -219,6 +219,24 @@ def test_article_links_recovered_from_next_data() -> None:
 # --------------------------------------------------------------------------- #
 
 
+def test_jsonld_blogposting_is_an_article_type() -> None:
+    """BlogPosting has no "article" substring, but level 1 must still see it."""
+    assert fa.is_article_type("BlogPosting")
+    assert fa.is_article_type("https://schema.org/BlogPosting")
+    assert fa.is_article_type(["WebPage", "NewsArticle"])
+    assert not fa.is_article_type("BreadcrumbList")
+    assert fa.jsonld_article(fa.make_soup(article_page(jsonld=BLOATED_JSONLD))) is not None
+
+
+def test_jsonld_taxonomy_is_rejected_on_size_not_on_type() -> None:
+    """The bloated keywords list reaches level 1 and loses the size check."""
+    html = article_page(jsonld=BLOATED_JSONLD, meta=ARTICLE_TAG_META)
+    soup = fa.make_soup(html)
+    assert len(fa.tags_from_jsonld(soup)) > fa.MAX_TAGS
+    row = fa.parse_article_page(html, "https://www.datacamp.com/blog/x")
+    assert row["tags"].split("|") == EXPECTED_TAGS
+
+
 def test_html_tag_block_beats_site_menu() -> None:
     """A declared tag block inside <article> wins over the global menu."""
     html = article_page(
