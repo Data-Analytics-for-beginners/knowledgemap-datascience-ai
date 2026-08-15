@@ -63,6 +63,10 @@ DEFAULT_DELAY_MIN = 1.0
 DEFAULT_DELAY_MAX = 2.0
 MIN_ALLOWED_DELAY = 1.0
 
+#: Article-like JSON-LD ``@type`` names that do not contain the substring
+#: "article".  ``BlogPosting`` is the type the DataCamp blog actually emits.
+JSONLD_ARTICLE_TYPES = {"blogposting", "liveblogposting", "posting"}
+
 #: A real article carries a handful of tags.  Anything above this is the site
 #: navigation menu leaking in, so the whole list is rejected.
 MAX_TAGS = 12
@@ -483,6 +487,31 @@ def iter_jsonld_objects(soup: BeautifulSoup) -> list[dict[str, Any]]:
     return objects
 
 
+def is_article_type(node_type: Any) -> bool:
+    """Check whether a JSON-LD ``@type`` describes an article.
+
+    A substring match on ``"article"`` alone is not enough: schema.org calls the
+    blog form ``BlogPosting``, which is what the DataCamp blog emits, so those
+    names are listed explicitly in :data:`JSONLD_ARTICLE_TYPES`.  Fully
+    qualified types (``https://schema.org/BlogPosting``) are reduced to their
+    last path segment first.
+
+    Args:
+        node_type: Raw ``@type`` value: a string, a list of strings, or junk.
+
+    Returns:
+        ``True`` if any of the declared types is article-like.
+    """
+    types = node_type if isinstance(node_type, list) else [node_type]
+    for value in types:
+        if not isinstance(value, str):
+            continue
+        name = value.rsplit("/", 1)[-1].strip().casefold()
+        if "article" in name or name in JSONLD_ARTICLE_TYPES:
+            return True
+    return False
+
+
 def jsonld_article(soup: BeautifulSoup) -> dict[str, Any] | None:
     """Return the JSON-LD node describing the article, if present.
 
@@ -493,9 +522,7 @@ def jsonld_article(soup: BeautifulSoup) -> dict[str, Any] | None:
         The first ``Article``-like node, or ``None``.
     """
     for node in iter_jsonld_objects(soup):
-        node_type = node.get("@type", "")
-        types = node_type if isinstance(node_type, list) else [node_type]
-        if any(isinstance(t, str) and "article" in t.casefold() for t in types):
+        if is_article_type(node.get("@type", "")):
             return node
     return None
 
