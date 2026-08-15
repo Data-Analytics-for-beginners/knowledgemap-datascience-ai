@@ -114,6 +114,60 @@ def article_page(
     )
 
 
+#: Real shape of a listing page: `props.pageProps.blogs` holds exactly the 12
+#: articles of that page, `count` is the site-wide article total (1502 as of
+#: 2026-08-15, i.e. 126 pages).  `mostRecentBlogs` is a *different* section that
+#: the markup renders too -- it must not end up in the page's link list.
+LISTING_PER_PAGE = 12
+LISTING_COUNT = 1502
+LISTING_TOTAL_PAGES = 126
+
+LISTING_PAGE_PROPS = {
+    "props": {
+        "pageProps": {
+            "count": LISTING_COUNT,
+            "blogs": [
+                {"slug": f"page-2-article-{i}", "title": f"Page 2 Article {i}"}
+                for i in range(LISTING_PER_PAGE)
+            ],
+            "mostRecentBlogs": [
+                {"slug": f"most-recent-{i}", "title": f"Most Recent {i}"} for i in range(9)
+            ],
+        }
+    }
+}
+
+
+def listing_page(payload: object = LISTING_PAGE_PROPS) -> str:
+    """Build a listing page fixture.
+
+    The markup renders both the paginated section and the "most recent" strip,
+    which is why link extraction must not trust it.
+
+    Args:
+        payload: Value embedded in the ``__NEXT_DATA__`` script tag.
+
+    Returns:
+        A full HTML document.
+    """
+    props = payload.get("props", {}).get("pageProps", {}) if isinstance(payload, dict) else {}
+    anchors = "".join(
+        f'<a href="/blog/{entry["slug"]}">{entry["title"]}</a>'
+        for key in ("blogs", "mostRecentBlogs")
+        for entry in props.get(key, [])
+    )
+    return (
+        "<html><head>"
+        f"{next_data_script(payload)}"
+        "</head><body><main>"
+        f"{anchors}"
+        '<a href="/blog/page/3">Next</a>'
+        "</main>"
+        f"{SITE_WIDE_CATEGORY_MENU}"
+        "</body></html>"
+    )
+
+
 ARTICLE_TAG_META = (
     '<meta property="article:tag" content="Artificial Intelligence">'
     '<meta property="article:tag" content="Large Language Models">'
@@ -193,8 +247,8 @@ def test_oversized_next_data_taxonomy_is_rejected() -> None:
     assert row["tags"].split("|") == EXPECTED_TAGS
 
 
-def test_article_links_recovered_from_next_data() -> None:
-    """A client-rendered listing still yields links via __NEXT_DATA__."""
+def test_article_links_recovered_from_next_data_walk() -> None:
+    """A client-rendered listing without `blogs` still yields links."""
     payload = {
         "props": {
             "pageProps": {
@@ -212,6 +266,92 @@ def test_article_links_recovered_from_next_data() -> None:
         "https://www.datacamp.com/blog/gemini-3-7-flash",
         "https://www.datacamp.com/blog/what-is-rag",
     ], links
+
+
+# --------------------------------------------------------------------------- #
+# Listing pages: pagination and link source
+# --------------------------------------------------------------------------- #
+
+
+def test_listing_url_uses_path_pagination() -> None:
+    """/blog for page 1, /blog/page/N after that - never the ignored ?page=."""
+    assert fa.listing_url(1) == "https://www.datacamp.com/blog"
+    assert fa.listing_url(2) == "https://www.datacamp.com/blog/page/2"
+    assert fa.listing_url(126) == "https://www.datacamp.com/blog/page/126"
+    assert "?page=" not in fa.listing_url(3)
+
+
+def test_listing_page_url_is_not_an_article() -> None:
+    """The pagination URL must not be mistaken for an article."""
+    assert not fa.is_article_url(fa.listing_url(2))
+
+
+def test_blogs_is_the_link_source_not_the_markup() -> None:
+    """Exactly the 12 paginated articles, without the "most recent" strip."""
+    page_url = fa.listing_url(2)
+    html = listing_page()
+
+    links = fa.extract_article_links(html, page_url)
+    assert len(links) == LISTING_PER_PAGE, len(links)
+    assert links == [
+        f"https://www.datacamp.com/blog/page-2-article-{i}" for i in range(LISTING_PER_PAGE)
+    ], links
+    assert not any("most-recent" in link for link in links)
+
+    # The markup mixes both sections - this is the 21-vs-12 regression.
+    from_markup = fa.dedupe(fa.links_from_markup(fa.make_soup(html), page_url))
+    assert len(from_markup) == LISTING_PER_PAGE + 9, len(from_markup)
+
+
+def test_listing_stats_reads_count_and_per_page() -> None:
+    """count and len(blogs) come straight from props.pageProps."""
+    assert fa.listing_stats(LISTING_PAGE_PROPS) == (LISTING_COUNT, LISTING_PER_PAGE)
+    assert fa.listing_stats(GEMINI_PAGE_PROPS) == (None, None)
+    assert fa.listing_stats(None) == (None, None)
+
+
+def test_total_pages_from_real_numbers() -> None:
+    """1502 articles / 12 per page = 126 pages (the last one partial)."""
+    assert fa.total_listing_pages(LISTING_COUNT, LISTING_PER_PAGE) == LISTING_TOTAL_PAGES
+    assert fa.total_listing_pages(24, 12) == 2
+    assert fa.total_listing_pages(25, 12) == 3
+    assert fa.total_listing_pages(None, 12) is None
+    assert fa.total_listing_pages(1502, None) is None
+    assert fa.total_listing_pages(1502, 0) is None
+
+
+def test_missing_blogs_falls_back_to_markup() -> None:
+    """No props.pageProps.blogs - the markup takes over instead of failing."""
+    payload = {"props": {"pageProps": {"count": LISTING_COUNT}}}
+    html = (
+        f"<html><head>{next_data_script(payload)}</head><body>"
+        '<a href="/blog/what-is-rag">RAG</a>'
+        '<a href="/blog/category/ai">AI</a>'
+        "</body></html>"
+    )
+    assert fa.extract_article_links(html, fa.listing_url(1)) == [
+        "https://www.datacamp.com/blog/what-is-rag"
+    ]
+    assert fa.listing_stats(payload) == (LISTING_COUNT, None)
+    assert fa.total_listing_pages(*fa.listing_stats(payload)) is None
+
+
+def test_blogs_entries_without_slug_are_skipped() -> None:
+    """Malformed entries drop out instead of producing broken URLs."""
+    payload = {
+        "props": {
+            "pageProps": {
+                "blogs": [
+                    {"slug": "what-is-rag", "title": "RAG"},
+                    {"title": "No slug"},
+                    {"slug": "   "},
+                    "not-an-object",
+                    {"slug": "category/ai", "title": "A listing, not an article"},
+                ]
+            }
+        }
+    }
+    assert fa.article_links_from_blogs(payload) == ["https://www.datacamp.com/blog/what-is-rag"]
 
 
 # --------------------------------------------------------------------------- #

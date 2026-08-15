@@ -20,10 +20,18 @@ Every level is size-checked: a tag list longer than ``MAX_TAGS`` is discarded
 outright (not truncated) and the next level gets its turn, so a page that leaks
 the whole site taxonomy into ``keywords`` cannot poison the output.
 
+The listing pages are hydrated the same way.  ``props.pageProps.blogs`` holds
+exactly the articles of the requested page, while the markup also renders other
+sections ("most recent", promoted posts), so the JSON is the authoritative link
+source and the HTML is only a fallback.  Pagination uses the path form
+``/blog/page/N`` (``/blog`` for page 1); the ``?page=`` query parameter is
+ignored by the site and always returns page 1.
+
 Only public metadata is collected -- article bodies are never downloaded.
 
 Usage:
     python scraping/fetch_articles.py --pages 2 --verbose
+    python scraping/fetch_articles.py --auto-pages --no-details
 """
 
 from __future__ import annotations
@@ -33,6 +41,7 @@ import copy
 import csv
 import json
 import logging
+import math
 import random
 import re
 import sys
@@ -49,6 +58,9 @@ from bs4.element import Tag
 
 BASE_URL = "https://www.datacamp.com"
 LISTING_PATH = "/blog"
+#: Pagination is path-based (``/blog/page/2``).  ``/blog?page=2`` returns the
+#: content of page 1 -- the query parameter is silently ignored by the site.
+LISTING_PAGE_PATH = "/blog/page"
 USER_AGENT = (
     "knowledgemap-datascience-ai/0.1 "
     "(+https://github.com/Data-Analytics-for-beginners/knowledgemap-datascience-ai; "
@@ -409,15 +421,109 @@ def field_from_next_data(next_data: dict[str, Any] | None, keys: Sequence[str]) 
     return ""
 
 
+def listing_blogs(next_data: dict[str, Any] | None) -> list[Any] | None:
+    """Return ``props.pageProps.blogs`` from a listing page payload.
+
+    This array holds exactly the articles of the requested listing page (12 on
+    the DataCamp blog) and nothing else -- unlike the markup, which also renders
+    ``mostRecentBlogs`` and promoted posts from other sections.
+
+    Args:
+        next_data: Decoded ``__NEXT_DATA__``, or ``None``.
+
+    Returns:
+        The raw ``blogs`` list, or ``None`` if the path does not exist.
+    """
+    if not next_data:
+        return None
+    blogs = dig(next_data, "props", "pageProps", "blogs")
+    if not isinstance(blogs, list):
+        LOGGER.debug("__NEXT_DATA__ present but props.pageProps.blogs is missing")
+        return None
+    return blogs
+
+
+def article_links_from_blogs(
+    next_data: dict[str, Any] | None, base: str = BASE_URL
+) -> list[str]:
+    """Build article URLs from ``props.pageProps.blogs[].slug``.
+
+    Authoritative link source for a listing page: one entry per article of that
+    page, in the order the site lists them.
+
+    Args:
+        next_data: Decoded ``__NEXT_DATA__``, or ``None``.
+        base: Site root.
+
+    Returns:
+        Canonical article URLs, deduplicated, in listing order.
+    """
+    blogs = listing_blogs(next_data)
+    if not blogs:
+        return []
+
+    links: list[str] = []
+    for entry in blogs:
+        slug = entry.get("slug") if isinstance(entry, dict) else None
+        if not isinstance(slug, str) or not slug.strip():
+            LOGGER.debug("Skipping blogs[] entry without a usable slug")
+            continue
+        url = canonical_url(f"/blog/{slug.strip().strip('/')}", base)
+        if url and is_article_url(url, base):
+            links.append(url)
+        else:
+            LOGGER.debug("Skipping non-article slug %r from blogs[]", slug)
+    return dedupe(links)
+
+
+def listing_stats(next_data: dict[str, Any] | None) -> tuple[int | None, int | None]:
+    """Read the pagination facts of a listing page.
+
+    Args:
+        next_data: Decoded ``__NEXT_DATA__``, or ``None``.
+
+    Returns:
+        A ``(count, per_page)`` pair, where ``count`` is the total number of
+        articles on the blog (``props.pageProps.count``) and ``per_page`` is the
+        size of this page's ``blogs`` array.  Either element is ``None`` when
+        the payload does not provide a usable value.
+    """
+    raw_count = dig(next_data, "props", "pageProps", "count")
+    count = raw_count if isinstance(raw_count, int) and not isinstance(raw_count, bool) else None
+    if count is not None and count <= 0:
+        count = None
+
+    blogs = listing_blogs(next_data)
+    per_page = len(blogs) if blogs else None
+    return count, per_page
+
+
+def total_listing_pages(count: int | None, per_page: int | None) -> int | None:
+    """Compute how many listing pages the blog has.
+
+    Args:
+        count: Total number of articles, or ``None``.
+        per_page: Articles per listing page, or ``None``.
+
+    Returns:
+        ``ceil(count / per_page)``, or ``None`` if either input is unusable.
+    """
+    if not count or not per_page or per_page <= 0:
+        return None
+    return math.ceil(count / per_page)
+
+
 def article_links_from_next_data(
     next_data: dict[str, Any] | None, base: str = BASE_URL
 ) -> list[str]:
-    """Recover article links from the Next.js payload of a listing page.
+    """Recover article links by walking the whole Next.js payload.
 
-    Fallback for when the listing markup is fully client-rendered and contains
-    no ``<a href="/blog/...">`` elements.  Only objects carrying both a ``slug``
-    and a ``title`` are considered, and every candidate is validated with
-    :func:`is_article_url`.
+    Last-resort fallback for a listing whose payload does not expose
+    ``props.pageProps.blogs`` and whose markup is fully client-rendered.  Only
+    objects carrying both a ``slug`` and a ``title`` are considered, and every
+    candidate is validated with :func:`is_article_url`.  The walk is
+    indiscriminate -- it also picks up sidebar and "most recent" sections -- so
+    it ranks below both other sources.
 
     Args:
         next_data: Decoded ``__NEXT_DATA__``, or ``None``.
@@ -910,8 +1016,69 @@ def parse_article_page(html: str, url: str) -> dict[str, str]:
     }
 
 
+def links_from_markup(soup: BeautifulSoup, page_url: str, base: str = BASE_URL) -> list[str]:
+    """Collect ``/blog/<slug>`` links from the rendered markup.
+
+    Args:
+        soup: Parsed listing page.
+        page_url: URL the HTML came from, used to resolve relative links.
+        base: Site root.
+
+    Returns:
+        Canonical article URLs in document order.
+    """
+    links: list[str] = []
+    for anchor in soup.find_all("a", href=True):
+        url = canonical_url(anchor["href"], page_url)
+        if url and is_article_url(url, base):
+            links.append(url)
+    return links
+
+
+def listing_article_links(
+    soup: BeautifulSoup, page_url: str, base: str = BASE_URL
+) -> list[str]:
+    """Collect the article URLs of a listing page from an already parsed tree.
+
+    Three ordered sources, first non-empty wins:
+
+        0. ``__NEXT_DATA__`` -> ``props.pageProps.blogs[].slug`` (authoritative:
+           exactly this page's articles)
+        1. ``<a href="/blog/...">`` in the markup -- mixes several page sections
+           together, so it is only a fallback
+        2. a full walk of ``__NEXT_DATA__`` for ``slug``/``title`` objects
+
+    Args:
+        soup: Parsed listing page.
+        page_url: URL the HTML came from, used to resolve relative links.
+        base: Site root.
+
+    Returns:
+        Canonical article URLs, deduplicated.
+    """
+    next_data = find_next_data(soup)
+
+    links = article_links_from_blogs(next_data, base)
+    if links:
+        LOGGER.debug("%s: %d links from props.pageProps.blogs", page_url, len(links))
+        return links
+
+    LOGGER.warning(
+        "No props.pageProps.blogs on %s - falling back to the markup", page_url
+    )
+    links = dedupe(links_from_markup(soup, page_url, base))
+    if links:
+        return links
+
+    LOGGER.warning("No article links in the markup of %s either - walking __NEXT_DATA__", page_url)
+    links = article_links_from_next_data(next_data, base)
+    if links:
+        LOGGER.info("Recovered %d links by walking __NEXT_DATA__", len(links))
+    return links
+
+
 def extract_article_links(html: str, page_url: str, base: str = BASE_URL) -> list[str]:
-    """Collect article URLs from a blog listing page.
+    """Collect article URLs from the raw HTML of a blog listing page.
 
     Args:
         html: Raw HTML of the listing page.
@@ -919,24 +1086,9 @@ def extract_article_links(html: str, page_url: str, base: str = BASE_URL) -> lis
         base: Site root.
 
     Returns:
-        Canonical article URLs, deduplicated, in document order.
+        Canonical article URLs, deduplicated.
     """
-    soup = make_soup(html)
-    links: list[str] = []
-    for anchor in soup.find_all("a", href=True):
-        url = canonical_url(anchor["href"], page_url)
-        if url and is_article_url(url, base):
-            links.append(url)
-
-    if not links:
-        LOGGER.warning(
-            "No article links in the markup of %s - falling back to __NEXT_DATA__", page_url
-        )
-        links = article_links_from_next_data(find_next_data(soup), base)
-        if links:
-            LOGGER.info("Recovered %d links from __NEXT_DATA__", len(links))
-
-    return dedupe(links)
+    return listing_article_links(make_soup(html), page_url, base)
 
 
 # --------------------------------------------------------------------------- #
@@ -1071,6 +1223,10 @@ def fetch(session: requests.Session, url: str, throttle: Throttle, robots: Robot
 def listing_url(page: int, base: str = BASE_URL) -> str:
     """Build the URL of a blog listing page.
 
+    Pagination is path-based: page 1 is ``/blog`` and every later page is
+    ``/blog/page/N``.  The ``?page=N`` query form does exist but is ignored by
+    the site, which silently serves page 1 for it.
+
     Args:
         page: 1-based page number.
         base: Site root.
@@ -1078,8 +1234,9 @@ def listing_url(page: int, base: str = BASE_URL) -> str:
     Returns:
         Absolute listing URL.
     """
-    root = urljoin(base, LISTING_PATH)
-    return root if page <= 1 else f"{root}?page={page}"
+    if page <= 1:
+        return urljoin(base, LISTING_PATH)
+    return urljoin(base, f"{LISTING_PAGE_PATH}/{page}")
 
 
 # --------------------------------------------------------------------------- #
@@ -1179,6 +1336,7 @@ def collect_article_urls(
     throttle: Throttle,
     pages: int,
     start_page: int,
+    auto_pages: bool = False,
 ) -> list[str]:
     """Walk the listing pagination and gather article URLs.
 
@@ -1188,28 +1346,67 @@ def collect_article_urls(
         throttle: Delay controller.
         pages: How many listing pages to visit.
         start_page: 1-based page to start from.
+        auto_pages: Derive the last page from ``props.pageProps.count`` and the
+            size of the first page's ``blogs`` array instead of stopping at
+            ``pages``.  Falls back to ``pages`` if the payload lacks either
+            value.
 
     Returns:
         Deduplicated article URLs.
     """
     urls: list[str] = []
     seen: set[str] = set()
-    for offset in range(pages):
-        page = start_page + offset
+    page = start_page
+    # --auto-pages needs the first page fetched: it carries count and per-page.
+    last_page = start_page + (max(pages, 1) if auto_pages else pages) - 1
+    page_count_known = False
+
+    while page <= last_page:
         url = listing_url(page)
         html = fetch(session, url, throttle, robots)
         if html is None:
             LOGGER.warning("Listing page %d unavailable - stopping pagination", page)
             break
 
-        found = extract_article_links(html, url)
+        soup = make_soup(html)
+        if auto_pages and page == start_page:
+            count, per_page = listing_stats(find_next_data(soup))
+            total = total_listing_pages(count, per_page)
+            if total is None:
+                LOGGER.warning(
+                    "--auto-pages: count=%s per_page=%s unusable - keeping --pages %d",
+                    count,
+                    per_page,
+                    pages,
+                )
+            else:
+                last_page = total
+                page_count_known = True
+                LOGGER.info(
+                    "--auto-pages: %d articles / %d per page = %d pages (visiting %d-%d)",
+                    count,
+                    per_page,
+                    total,
+                    start_page,
+                    last_page,
+                )
+
+        found = listing_article_links(soup, url)
         new = [item for item in found if item not in seen]
         LOGGER.info("Page %d: %d links, %d new", page, len(found), len(new))
-        if not new:
-            LOGGER.info("Page %d added nothing new - end of listing or layout change", page)
+        if not found:
+            LOGGER.warning("Page %d has no article links at all - stopping pagination", page)
             break
+        if not new:
+            # Without a known page count, a repeat page is the only end signal.
+            if not page_count_known:
+                LOGGER.info("Page %d added nothing new - end of listing or layout change", page)
+                break
+            LOGGER.warning("Page %d repeats already-seen articles - continuing", page)
         seen.update(new)
         urls.extend(new)
+        page += 1
+
     return urls
 
 
@@ -1220,6 +1417,7 @@ def scrape(
     fetch_details: bool,
     delay_min: float,
     delay_max: float,
+    auto_pages: bool = False,
 ) -> list[dict[str, str]]:
     """Run the full scrape.
 
@@ -1230,6 +1428,8 @@ def scrape(
         fetch_details: Whether to open each article page.
         delay_min: Minimum delay between requests, in seconds.
         delay_max: Maximum delay between requests, in seconds.
+        auto_pages: Derive the number of listing pages from the first page's
+            ``__NEXT_DATA__`` instead of using ``pages``.
 
     Returns:
         Collected rows.
@@ -1244,7 +1444,7 @@ def scrape(
         throttle.delay_min = robots.crawl_delay
         throttle.delay_max = max(robots.crawl_delay, throttle.delay_max)
 
-    urls = collect_article_urls(session, robots, throttle, pages, start_page)
+    urls = collect_article_urls(session, robots, throttle, pages, start_page, auto_pages)
     if limit is not None:
         urls = urls[:limit]
     LOGGER.info("Collected %d article URLs", len(urls))
@@ -1282,6 +1482,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Scrape DataCamp blog article metadata.")
     parser.add_argument("--pages", type=int, default=2, help="listing pages to visit (default: 2)")
     parser.add_argument("--start-page", type=int, default=1, help="first listing page (default: 1)")
+    parser.add_argument(
+        "--auto-pages",
+        action="store_true",
+        help=(
+            "derive the last listing page from props.pageProps.count and the "
+            "size of the first page's blogs array, ignoring --pages"
+        ),
+    )
     parser.add_argument("--limit", type=int, default=None, help="max articles to fetch")
     parser.add_argument(
         "--no-details",
@@ -1318,6 +1526,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             fetch_details=not args.no_details,
             delay_min=args.delay_min,
             delay_max=args.delay_max,
+            auto_pages=args.auto_pages,
         )
     except RobotsUnavailableError as exc:
         LOGGER.error("Refusing to crawl: %s", exc)
