@@ -1,0 +1,33 @@
+# Web scraping
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
+# Data processing
+pandas>=2.1.0
+numpy>=1.26.0
+
+# NLP
+scikit-learn>=1.4.0
+gensim>=4.3.0
+spacy>=3.7.0
+nltk>=3.8.0
+
+# Graph analysis
+networkx>=3.2.0
+
+# Visualization
+pyvis>=0.3.2
+plotly>=5.18.0
+matplotlib>=3.8.0
+seaborn>=0.13.0
+
+# Notebooks
+jupyter>=1.0.0
+ipykernel>=6.29.0
+
+# Optional web app
+streamlit>=1.30.0
+
+# Environment variables
+python-dotenv>=1.0.0
