@@ -1,0 +1,997 @@
+{
+  "source": "data/processed/articles_clean.csv",
+  "n_documents": 1478,
+  "n_topics": 8,
+  "settings": {
+    "input": "data/processed/articles_clean.csv",
+    "library": "scikit-learn",
+    "algorithm": "LatentDirichletAllocation",
+    "vectorizer": "tfidf",
+    "ngram_range": [
+      1,
+      2
+    ],
+    "min_df": 5,
+    "max_df": 0.5,
+    "max_features": 5000,
+    "n_features": 1146,
+    "random_state": 42,
+    "max_iter": 25,
+    "candidates": [
+      8
+    ]
+  },
+  "selection": [
+    {
+      "n_topics": 8,
+      "coherence_umass": -1.9473652847150174,
+      "perplexity": 3123.5374055147117
+    }
+  ],
+  "topics": [
+    {
+      "topic_id": 0,
+      "label": "Обробка природної мови",
+      "keywords": [
+        {
+          "term": "model",
+          "weight": 0.02551
+        },
+        {
+          "term": "language",
+          "weight": 0.01843
+        },
+        {
+          "term": "language model",
+          "weight": 0.01636
+        },
+        {
+          "term": "large",
+          "weight": 0.01399
+        },
+        {
+          "term": "image",
+          "weight": 0.01354
+        },
+        {
+          "term": "ai",
+          "weight": 0.01299
+        },
+        {
+          "term": "large language",
+          "weight": 0.01113
+        },
+        {
+          "term": "llm",
+          "weight": 0.01108
+        },
+        {
+          "term": "scale",
+          "weight": 0.00998
+        },
+        {
+          "term": "meta",
+          "weight": 0.00951
+        }
+      ],
+      "article_count": 119,
+      "share": 0.0805,
+      "top_tags": [
+        {
+          "tag": "Deep Learning",
+          "count": 6,
+          "share": 0.0296,
+          "lift": 4.49
+        },
+        {
+          "tag": "Generative AI",
+          "count": 11,
+          "share": 0.0542,
+          "lift": 4.37
+        },
+        {
+          "tag": "OpenAI",
+          "count": 6,
+          "share": 0.0296,
+          "lift": 3.81
+        },
+        {
+          "tag": "ChatGPT",
+          "count": 5,
+          "share": 0.0246,
+          "lift": 2.89
+        },
+        {
+          "tag": "Large Language Models",
+          "count": 22,
+          "share": 0.1084,
+          "lift": 2.24
+        }
+      ],
+      "examples": [
+        {
+          "title": "What is Llama 3? The Experts' View on The Next Generation of Open Source LLMs",
+          "url": "https://www.datacamp.com/blog/meta-announces-llama-3-the-next-generation-of-open-source-llms"
+        },
+        {
+          "title": "Enhancing Large Language Models with Knowledge Graphs",
+          "url": "https://www.datacamp.com/blog/knowledge-graphs-and-llms"
+        },
+        {
+          "title": "Promoting Responsible AI: Content Moderation in ChatGPT",
+          "url": "https://www.datacamp.com/blog/promoting-responsible-ai-content-moderation-in-chatgpt"
+        }
+      ]
+    },
+    {
+      "topic_id": 1,
+      "label": "Хмарні платформи та Data Engineering",
+      "keywords": [
+        {
+          "term": "difference",
+          "weight": 0.01742
+        },
+        {
+          "term": "cloud",
+          "weight": 0.01594
+        },
+        {
+          "term": "data",
+          "weight": 0.0154
+        },
+        {
+          "term": "power",
+          "weight": 0.01531
+        },
+        {
+          "term": "bi",
+          "weight": 0.01264
+        },
+        {
+          "term": "power bi",
+          "weight": 0.0123
+        },
+        {
+          "term": "aws",
+          "weight": 0.01184
+        },
+        {
+          "term": "learn",
+          "weight": 0.01055
+        },
+        {
+          "term": "course",
+          "weight": 0.01034
+        },
+        {
+          "term": "case",
+          "weight": 0.0096
+        }
+      ],
+      "article_count": 234,
+      "share": 0.1583,
+      "top_tags": [
+        {
+          "tag": "Power BI",
+          "count": 18,
+          "share": 0.0438,
+          "lift": 3.64
+        },
+        {
+          "tag": "AWS",
+          "count": 17,
+          "share": 0.0414,
+          "lift": 3.33
+        },
+        {
+          "tag": "Cloud",
+          "count": 39,
+          "share": 0.0949,
+          "lift": 2.91
+        },
+        {
+          "tag": "Data Engineering",
+          "count": 45,
+          "share": 0.1095,
+          "lift": 1.91
+        },
+        {
+          "tag": "Python",
+          "count": 13,
+          "share": 0.0316,
+          "lift": 1.09
+        }
+      ],
+      "examples": [
+        {
+          "title": "The Best Data Science Courses to Take in 2026",
+          "url": "https://www.datacamp.com/blog/best-data-science-courses"
+        },
+        {
+          "title": "8 of The Most Popular Machine Learning Tools",
+          "url": "https://www.datacamp.com/blog/most-popular-machine-learning-tools"
+        },
+        {
+          "title": "AWS vs Azure vs GCP: Which to Learn for Data Engineering",
+          "url": "https://www.datacamp.com/blog/aws-vs-azure-vs-gcp"
+        }
+      ]
+    },
+    {
+      "topic_id": 2,
+      "label": "Кар'єра та навчання в Data Science",
+      "keywords": [
+        {
+          "term": "data",
+          "weight": 0.03733
+        },
+        {
+          "term": "science",
+          "weight": 0.01822
+        },
+        {
+          "term": "data science",
+          "weight": 0.01797
+        },
+        {
+          "term": "skill",
+          "weight": 0.01326
+        },
+        {
+          "term": "guide",
+          "weight": 0.01163
+        },
+        {
+          "term": "learning",
+          "weight": 0.01146
+        },
+        {
+          "term": "learn",
+          "weight": 0.0114
+        },
+        {
+          "term": "ai",
+          "weight": 0.00962
+        },
+        {
+          "term": "discover",
+          "weight": 0.00891
+        },
+        {
+          "term": "project",
+          "weight": 0.00841
+        }
+      ],
+      "article_count": 522,
+      "share": 0.3532,
+      "top_tags": [
+        {
+          "tag": "Data Analysis",
+          "count": 62,
+          "share": 0.0705,
+          "lift": 1.76
+        },
+        {
+          "tag": "Career Services",
+          "count": 89,
+          "share": 0.1011,
+          "lift": 1.65
+        },
+        {
+          "tag": "Python",
+          "count": 38,
+          "share": 0.0432,
+          "lift": 1.49
+        },
+        {
+          "tag": "Data Science",
+          "count": 96,
+          "share": 0.1091,
+          "lift": 1.48
+        },
+        {
+          "tag": "For Business",
+          "count": 42,
+          "share": 0.0477,
+          "lift": 1.42
+        }
+      ],
+      "examples": [
+        {
+          "title": "What is Data Literacy? A 2026 Guide for Data & Analytics Leaders",
+          "url": "https://www.datacamp.com/blog/why-data-literacy-is-important-for-your-team"
+        },
+        {
+          "title": "What is Data Literacy? A 2026 Guide for Data & Analytics Leaders",
+          "url": "https://www.datacamp.com/blog/why-is-data-literacy-important"
+        },
+        {
+          "title": "What is Data Literacy? A 2026 Guide for Data & Analytics Leaders",
+          "url": "https://www.datacamp.com/blog/the-complete-guide-to-data-literacy"
+        }
+      ]
+    },
+    {
+      "topic_id": 3,
+      "label": "Підготовка до співбесід",
+      "keywords": [
+        {
+          "term": "interview",
+          "weight": 0.05055
+        },
+        {
+          "term": "question",
+          "weight": 0.04264
+        },
+        {
+          "term": "interview question",
+          "weight": 0.03569
+        },
+        {
+          "term": "answer",
+          "weight": 0.02538
+        },
+        {
+          "term": "question answer",
+          "weight": 0.01989
+        },
+        {
+          "term": "top",
+          "weight": 0.01544
+        },
+        {
+          "term": "advance",
+          "weight": 0.01461
+        },
+        {
+          "term": "cover",
+          "weight": 0.01195
+        },
+        {
+          "term": "basic",
+          "weight": 0.01112
+        },
+        {
+          "term": "prepare",
+          "weight": 0.01101
+        }
+      ],
+      "article_count": 94,
+      "share": 0.0636,
+      "top_tags": [
+        {
+          "tag": "SQL",
+          "count": 9,
+          "share": 0.052,
+          "lift": 3.05
+        },
+        {
+          "tag": "Career Services",
+          "count": 28,
+          "share": 0.1618,
+          "lift": 2.64
+        },
+        {
+          "tag": "Data Engineering",
+          "count": 25,
+          "share": 0.1445,
+          "lift": 2.52
+        },
+        {
+          "tag": "Cloud",
+          "count": 11,
+          "share": 0.0636,
+          "lift": 1.95
+        },
+        {
+          "tag": "Python",
+          "count": 9,
+          "share": 0.052,
+          "lift": 1.79
+        }
+      ],
+      "examples": [
+        {
+          "title": "Top 37 Azure Data Engineering Interview Questions for 2026",
+          "url": "https://www.datacamp.com/blog/azure-data-engineering-interview-questions"
+        },
+        {
+          "title": "Top 25 MongoDB Interview Questions and Answers for 2026",
+          "url": "https://www.datacamp.com/blog/mongodb-interview-questions"
+        },
+        {
+          "title": "Top 30 Data Structure Interview Questions and Answers for 2026",
+          "url": "https://www.datacamp.com/blog/data-structure-interview-questions"
+        }
+      ]
+    },
+    {
+      "topic_id": 4,
+      "label": "Кар'єра та навчання в Data Science (spotlight)",
+      "keywords": [
+        {
+          "term": "data",
+          "weight": 0.02205
+        },
+        {
+          "term": "ai",
+          "weight": 0.01433
+        },
+        {
+          "term": "spotlight",
+          "weight": 0.01394
+        },
+        {
+          "term": "literacy",
+          "weight": 0.01191
+        },
+        {
+          "term": "upskill",
+          "weight": 0.01123
+        },
+        {
+          "term": "employee",
+          "weight": 0.01065
+        },
+        {
+          "term": "report",
+          "weight": 0.0104
+        },
+        {
+          "term": "business",
+          "weight": 0.01014
+        },
+        {
+          "term": "datalab",
+          "weight": 0.01003
+        },
+        {
+          "term": "analyst",
+          "weight": 0.00948
+        }
+      ],
+      "article_count": 119,
+      "share": 0.0805,
+      "top_tags": [
+        {
+          "tag": "Life at DataCamp",
+          "count": 24,
+          "share": 0.1116,
+          "lift": 4.24
+        },
+        {
+          "tag": "AI for Business",
+          "count": 7,
+          "share": 0.0326,
+          "lift": 3.11
+        },
+        {
+          "tag": "For Business",
+          "count": 21,
+          "share": 0.0977,
+          "lift": 2.9
+        },
+        {
+          "tag": "Data Literacy",
+          "count": 22,
+          "share": 0.1023,
+          "lift": 2.26
+        },
+        {
+          "tag": "Learner Stories",
+          "count": 9,
+          "share": 0.0419,
+          "lift": 2.25
+        }
+      ],
+      "examples": [
+        {
+          "title": "Bridging the Communications Gap with Data Literacy",
+          "url": "https://www.datacamp.com/blog/bridging-the-communications-gap-with-data-literacy"
+        },
+        {
+          "title": "What’s Driving the Data Literacy Skills Gap?",
+          "url": "https://www.datacamp.com/blog/what-s-driving-the-data-literacy-skills-gap"
+        },
+        {
+          "title": "25 Practical Examples of AI Transforming Industries",
+          "url": "https://www.datacamp.com/blog/examples-of-ai"
+        }
+      ]
+    },
+    {
+      "topic_id": 5,
+      "label": "Освітні партнерства та благодійність",
+      "keywords": [
+        {
+          "term": "donate",
+          "weight": 0.03006
+        },
+        {
+          "term": "classroom",
+          "weight": 0.02086
+        },
+        {
+          "term": "student",
+          "weight": 0.02034
+        },
+        {
+          "term": "partner",
+          "weight": 0.01653
+        },
+        {
+          "term": "free",
+          "weight": 0.01467
+        },
+        {
+          "term": "education",
+          "weight": 0.0146
+        },
+        {
+          "term": "scholarship",
+          "weight": 0.01244
+        },
+        {
+          "term": "year",
+          "weight": 0.01218
+        },
+        {
+          "term": "teacher",
+          "weight": 0.01176
+        },
+        {
+          "term": "data",
+          "weight": 0.01154
+        }
+      ],
+      "article_count": 73,
+      "share": 0.0494,
+      "top_tags": [
+        {
+          "tag": "DataCamp Classrooms",
+          "count": 21,
+          "share": 0.1409,
+          "lift": 12.99
+        },
+        {
+          "tag": "DataCamp Donates",
+          "count": 33,
+          "share": 0.2215,
+          "lift": 9.52
+        },
+        {
+          "tag": "Learner Stories",
+          "count": 13,
+          "share": 0.0872,
+          "lift": 4.69
+        },
+        {
+          "tag": "Product News",
+          "count": 9,
+          "share": 0.0604,
+          "lift": 3.54
+        },
+        {
+          "tag": "Data Literacy",
+          "count": 22,
+          "share": 0.1477,
+          "lift": 3.26
+        }
+      ],
+      "examples": [
+        {
+          "title": "Reflecting on Another Year of Social Impact: DataCamp Classrooms 2023-2024 Annual Report",
+          "url": "https://www.datacamp.com/blog/datacamp-classrooms-annual-report-2023-2024"
+        },
+        {
+          "title": "DataCamp for Classrooms is Now Free to Belgian Secondary School Teachers and Students",
+          "url": "https://www.datacamp.com/blog/datacamp-for-classrooms-is-now-free-to-belgian-secondary-school-teachers-and-students"
+        },
+        {
+          "title": "DataCamp Classrooms Annual Report 2022",
+          "url": "https://www.datacamp.com/blog/datacamp-classrooms-annual-report-2022"
+        }
+      ]
+    },
+    {
+      "topic_id": 6,
+      "label": "Порівняння AI-моделей",
+      "keywords": [
+        {
+          "term": "claude",
+          "weight": 0.02757
+        },
+        {
+          "term": "benchmark",
+          "weight": 0.02281
+        },
+        {
+          "term": "code",
+          "weight": 0.0196
+        },
+        {
+          "term": "model",
+          "weight": 0.01949
+        },
+        {
+          "term": "ai",
+          "weight": 0.01828
+        },
+        {
+          "term": "feature",
+          "weight": 0.0177
+        },
+        {
+          "term": "compare",
+          "weight": 0.01732
+        },
+        {
+          "term": "agent",
+          "weight": 0.01677
+        },
+        {
+          "term": "price",
+          "weight": 0.01663
+        },
+        {
+          "term": "openai",
+          "weight": 0.01649
+        }
+      ],
+      "article_count": 180,
+      "share": 0.1218,
+      "top_tags": [
+        {
+          "tag": "AI News",
+          "count": 13,
+          "share": 0.0405,
+          "lift": 6.15
+        },
+        {
+          "tag": "AI Agents",
+          "count": 29,
+          "share": 0.0903,
+          "lift": 4.96
+        },
+        {
+          "tag": "OpenAI",
+          "count": 11,
+          "share": 0.0343,
+          "lift": 4.42
+        },
+        {
+          "tag": "Large Language Models",
+          "count": 65,
+          "share": 0.2025,
+          "lift": 4.18
+        },
+        {
+          "tag": "ChatGPT",
+          "count": 8,
+          "share": 0.0249,
+          "lift": 2.92
+        }
+      ],
+      "examples": [
+        {
+          "title": "Claude Opus 4.7 vs Gemini 3.1 Pro: Which Model Is Better?",
+          "url": "https://www.datacamp.com/blog/claude-opus-4-7-vs-gemini-3-1-pro"
+        },
+        {
+          "title": "Claude Opus 4.8 vs Gemini 3.5 Flash: Benchmarks and Use Cases Compared",
+          "url": "https://www.datacamp.com/blog/gemini-3-5-flash-vs-claude-opus-4-8"
+        },
+        {
+          "title": "Claude Opus 5 vs Claude Fable 5: Which Anthropic Model Should You Use?",
+          "url": "https://www.datacamp.com/blog/claude-opus-5-vs-claude-fable-5"
+        }
+      ]
+    },
+    {
+      "topic_id": 7,
+      "label": "Великі мовні моделі та генеративний AI",
+      "keywords": [
+        {
+          "term": "ai",
+          "weight": 0.02751
+        },
+        {
+          "term": "machine",
+          "weight": 0.02349
+        },
+        {
+          "term": "learning",
+          "weight": 0.02311
+        },
+        {
+          "term": "machine learning",
+          "weight": 0.02221
+        },
+        {
+          "term": "database",
+          "weight": 0.0143
+        },
+        {
+          "term": "generative",
+          "weight": 0.01406
+        },
+        {
+          "term": "example",
+          "weight": 0.01354
+        },
+        {
+          "term": "generative ai",
+          "weight": 0.01247
+        },
+        {
+          "term": "learn",
+          "weight": 0.01225
+        },
+        {
+          "term": "application",
+          "weight": 0.01091
+        }
+      ],
+      "article_count": 137,
+      "share": 0.0927,
+      "top_tags": [
+        {
+          "tag": "Machine Learning",
+          "count": 33,
+          "share": 0.1447,
+          "lift": 3.22
+        },
+        {
+          "tag": "SQL",
+          "count": 8,
+          "share": 0.0351,
+          "lift": 2.06
+        },
+        {
+          "tag": "Generative AI",
+          "count": 5,
+          "share": 0.0219,
+          "lift": 1.77
+        },
+        {
+          "tag": "Artificial Intelligence",
+          "count": 77,
+          "share": 0.3377,
+          "lift": 1.71
+        },
+        {
+          "tag": "AI Agents",
+          "count": 6,
+          "share": 0.0263,
+          "lift": 1.44
+        }
+      ],
+      "examples": [
+        {
+          "title": "AI Agents Business Applications: Examples, Benefits, Challenges",
+          "url": "https://www.datacamp.com/blog/ai-agents-business-applications"
+        },
+        {
+          "title": "Understanding AI Agents: The Future of Autonomous Systems",
+          "url": "https://www.datacamp.com/blog/ai-agents"
+        },
+        {
+          "title": "What can you do with SQL?",
+          "url": "https://www.datacamp.com/blog/what-can-you-do-with-sql"
+        }
+      ]
+    }
+  ],
+  "similarity": {
+    "metric": "cosine over topic-term distributions",
+    "matrix": [
+      [
+        1.0,
+        0.2354,
+        0.2321,
+        0.1156,
+        0.2139,
+        0.1491,
+        0.2942,
+        0.3295
+      ],
+      [
+        0.2354,
+        1.0,
+        0.4666,
+        0.1218,
+        0.2872,
+        0.1667,
+        0.212,
+        0.2961
+      ],
+      [
+        0.2321,
+        0.4666,
+        1.0,
+        0.1566,
+        0.4445,
+        0.2111,
+        0.146,
+        0.3526
+      ],
+      [
+        0.1156,
+        0.1218,
+        0.1566,
+        1.0,
+        0.1009,
+        0.0796,
+        0.0753,
+        0.1042
+      ],
+      [
+        0.2139,
+        0.2872,
+        0.4445,
+        0.1009,
+        1.0,
+        0.1916,
+        0.1536,
+        0.2457
+      ],
+      [
+        0.1491,
+        0.1667,
+        0.2111,
+        0.0796,
+        0.1916,
+        1.0,
+        0.0922,
+        0.1075
+      ],
+      [
+        0.2942,
+        0.212,
+        0.146,
+        0.0753,
+        0.1536,
+        0.0922,
+        1.0,
+        0.2487
+      ],
+      [
+        0.3295,
+        0.2961,
+        0.3526,
+        0.1042,
+        0.2457,
+        0.1075,
+        0.2487,
+        1.0
+      ]
+    ]
+  },
+  "edges": [
+    {
+      "source": 1,
+      "target": 2,
+      "weight": 0.4666
+    },
+    {
+      "source": 2,
+      "target": 4,
+      "weight": 0.4445
+    },
+    {
+      "source": 2,
+      "target": 7,
+      "weight": 0.3526
+    },
+    {
+      "source": 0,
+      "target": 7,
+      "weight": 0.3295
+    },
+    {
+      "source": 1,
+      "target": 7,
+      "weight": 0.2961
+    },
+    {
+      "source": 0,
+      "target": 6,
+      "weight": 0.2942
+    },
+    {
+      "source": 1,
+      "target": 4,
+      "weight": 0.2872
+    },
+    {
+      "source": 6,
+      "target": 7,
+      "weight": 0.2487
+    },
+    {
+      "source": 4,
+      "target": 7,
+      "weight": 0.2457
+    },
+    {
+      "source": 0,
+      "target": 1,
+      "weight": 0.2354
+    },
+    {
+      "source": 0,
+      "target": 2,
+      "weight": 0.2321
+    },
+    {
+      "source": 0,
+      "target": 4,
+      "weight": 0.2139
+    },
+    {
+      "source": 1,
+      "target": 6,
+      "weight": 0.212
+    },
+    {
+      "source": 2,
+      "target": 5,
+      "weight": 0.2111
+    },
+    {
+      "source": 4,
+      "target": 5,
+      "weight": 0.1916
+    },
+    {
+      "source": 1,
+      "target": 5,
+      "weight": 0.1667
+    },
+    {
+      "source": 2,
+      "target": 3,
+      "weight": 0.1566
+    },
+    {
+      "source": 4,
+      "target": 6,
+      "weight": 0.1536
+    },
+    {
+      "source": 0,
+      "target": 5,
+      "weight": 0.1491
+    },
+    {
+      "source": 2,
+      "target": 6,
+      "weight": 0.146
+    },
+    {
+      "source": 1,
+      "target": 3,
+      "weight": 0.1218
+    },
+    {
+      "source": 0,
+      "target": 3,
+      "weight": 0.1156
+    },
+    {
+      "source": 5,
+      "target": 7,
+      "weight": 0.1075
+    },
+    {
+      "source": 3,
+      "target": 7,
+      "weight": 0.1042
+    },
+    {
+      "source": 3,
+      "target": 4,
+      "weight": 0.1009
+    }
+  ]
+}
