@@ -1,0 +1,21 @@
+{
+  "rows_in": 1495,
+  "rows_out": 1478,
+  "rows_dropped": 17,
+  "dropped_by_reason": {
+    "missing published_date (certification page)": 3,
+    "empty excerpt": 14
+  },
+  "examples": {
+    "missing published_date (certification page)": [
+      "https://www.datacamp.com/blog/sql-certification",
+      "https://www.datacamp.com/blog/power-bi-certification",
+      "https://www.datacamp.com/blog/GitHub-certifications"
+    ],
+    "empty excerpt": [
+      "https://www.datacamp.com/blog/gpt-5-4-mini-nano",
+      "https://www.datacamp.com/blog/data-camp-co-sponsors-the-40-k-data4-good-case-competition",
+      "https://www.datacamp.com/blog/were-making-datacamp-free-for-all-high-school-teachers-and-their-students"
+    ]
+  }
+}

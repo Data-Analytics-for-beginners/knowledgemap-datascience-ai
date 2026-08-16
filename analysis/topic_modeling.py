@@ -46,6 +46,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import math
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -103,6 +104,16 @@ SMALL_CORPUS_THRESHOLD = 50
 #: Cosine similarity below which a topic-topic edge is not worth a graph edge.
 EDGE_THRESHOLD = 0.10
 
+#: Relative tolerance under which two label rules count as scoring the same.
+#: Kept at float-noise level on purpose: only genuinely equal scores go to the
+#: specificity tie-break, so a rule can never win on rounding.
+SCORE_TIE_TOLERANCE = 1e-9
+
+#: Keywords that say nothing about a topic and must never end up as its
+#: disambiguating suffix -- "Кар'єра та навчання в Data Science (data)" names
+#: the corpus, not the topic.
+GENERIC_KEYWORDS = frozenset({"data", "ai", "model", "use", "new", "learn", "science"})
+
 LOGGER = logging.getLogger("topic_modeling")
 
 
@@ -119,11 +130,31 @@ class DatasetError(ValueError):
 #: follows the data instead of the topic's arbitrary index.  Rules are written
 #: in lemma form (`statistic`, not `statistics`) because they are matched
 #: against already-lemmatized keywords.
+#:
+#: The catalogue is ordered **specific before generic**: a narrow rule such as
+#: "Підготовка до співбесід" is a subset of the broad career rule, and listing it
+#: first documents that intent (it also decides exact ties, see
+#: :data:`SCORE_TIE_TOLERANCE`).  Two AI rules deliberately repeat the model
+#: names from the LLM rule -- an article naming `claude` is about LLMs either
+#: way, so the narrower rule only takes over once comparison vocabulary
+#: (`benchmark`, `price`) or application vocabulary (`use case`) is present too.
 LABEL_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "Порівняння AI-моделей",
+        ("benchmark", "leaderboard", "price", "pricing", "cost", "compare", "comparison",
+         "versus", "vs", "context window", "claude", "gpt", "gemini", "llama", "mistral",
+         "grok", "deepseek", "opus", "sonnet"),
+    ),
     (
         "Великі мовні моделі та генеративний AI",
         ("llm", "gpt", "chatgpt", "claude", "gemini", "llama", "prompt", "generative",
          "generative ai", "rag", "fine-tuning", "agent", "chatbot", "token", "mistral"),
+    ),
+    (
+        "Застосування ML/AI",
+        ("application", "use case", "real-world", "case study", "example", "implementation",
+         "implement", "solution", "adoption", "integration", "automation", "assistant",
+         "practical"),
     ),
     (
         "Глибоке навчання та нейромережі",
@@ -173,10 +204,26 @@ LABEL_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
          "dataset", "cleaning", "data quality", "spreadsheet"),
     ),
     (
+        "Підготовка до співбесід",
+        ("interview", "interview question", "question", "answer", "prepare", "preparation",
+         "quiz", "mock", "candidate", "recruiter", "hiring manager", "whiteboard",
+         "take-home"),
+    ),
+    (
+        "Освітні партнерства та благодійність",
+        ("classroom", "student", "scholarship", "teacher", "donate", "donation", "nonprofit",
+         "non-profit", "charity", "school", "university", "campus", "educator", "instructor",
+         "curriculum", "grant", "academy", "philanthropy"),
+    ),
+    # `interview` and `student` used to live in the rule below and made it win
+    # the interview-prep and classroom-outreach topics as well; they now belong
+    # to the two narrower rules above.
+    (
         "Кар'єра та навчання в Data Science",
-        ("career", "job", "interview", "salary", "certification", "certificate", "course",
+        ("career", "job", "salary", "certification", "certificate", "course",
          "skill", "resume", "bootcamp", "hire", "hiring", "beginner", "portfolio",
-         "roadmap", "student", "degree"),
+         "roadmap", "degree", "learning path", "upskill", "project", "mentor",
+         "self-taught", "discover"),
     ),
     (
         "AI у бізнесі: стратегія та трансформація",
@@ -209,6 +256,12 @@ def label_topic(keywords: Sequence[tuple[str, float]]) -> tuple[str | None, floa
     keywords it matches; matching is whole-word and phrase-aware, so the rule
     ``ai`` matches the keyword ``ai`` and ``generative ai`` but not ``train``.
 
+    When two rules end up with the same score, the one that explains **more** of
+    the topic's keywords wins.  A rule matching four keywords describes the
+    topic; a rule reaching the same total on one heavy keyword merely brushes
+    it, and picking the first-listed rule instead is how near-identical labels
+    used to appear on unrelated topics.
+
     Args:
         keywords: ``(term, weight)`` pairs for one topic, highest weight first.
 
@@ -218,15 +271,25 @@ def label_topic(keywords: Sequence[tuple[str, float]]) -> tuple[str | None, floa
     """
     best_label: str | None = None
     best_score = 0.0
+    best_matches = 0
 
     for label, triggers in LABEL_RULES:
-        score = sum(
+        matched = [
             weight
             for term, weight in keywords
             if any(_phrase_in_term(trigger, term) for trigger in triggers)
-        )
-        if score > best_score:
-            best_label, best_score = label, score
+        ]
+        score = sum(matched)
+        if score <= 0.0:
+            continue
+
+        if math.isclose(score, best_score, rel_tol=SCORE_TIE_TOLERANCE):
+            wins = len(matched) > best_matches
+        else:
+            wins = score > best_score
+
+        if wins:
+            best_label, best_score, best_matches = label, score, len(matched)
 
     return best_label, best_score
 
@@ -247,6 +310,34 @@ def _phrase_in_term(phrase: str, term: str) -> bool:
     return any(term_words[i : i + span] == phrase_words for i in range(len(term_words) - span + 1))
 
 
+def distinguishing_keyword(label: str, keywords: Sequence[tuple[str, float]]) -> str | None:
+    """Find the keyword that best sets a topic apart from its label.
+
+    Used only when two topics match the same rule and the runner-up needs a
+    suffix.  The top keyword is a poor choice there: it is usually either the
+    word that triggered the shared label in the first place or a corpus-wide
+    filler such as ``data``, and neither tells the two topics apart.
+
+    Args:
+        label: The shared label both topics matched.
+        keywords: ``(term, weight)`` pairs for the runner-up topic, best first.
+
+    Returns:
+        The heaviest keyword that is neither generic nor a trigger of ``label``;
+        the heaviest non-generic keyword if every keyword is a trigger; and
+        ``None`` for an empty or entirely generic keyword list.
+    """
+    triggers = dict(LABEL_RULES).get(label, ())
+    informative = [term for term, _ in keywords if term not in GENERIC_KEYWORDS]
+
+    for term in informative:
+        if not any(_phrase_in_term(trigger, term) for trigger in triggers):
+            return term
+    # Every keyword triggered the shared label (two genuinely SQL-ish topics):
+    # the strongest one is still a better suffix than the topic index.
+    return informative[0] if informative else None
+
+
 def fallback_label(topic_id: int, keywords: Sequence[tuple[str, float]]) -> str:
     """Name a topic from its own keywords when no rule matched.
 
@@ -265,8 +356,9 @@ def assign_labels(topic_keywords: Sequence[Sequence[tuple[str, float]]]) -> list
     """Label every topic, keeping the labels distinct.
 
     Two topics can legitimately both look like "machine learning"; when that
-    happens the runner-up gets its strongest keyword appended so the report
-    never shows two identically named topics.
+    happens the runner-up gets its most distinguishing keyword appended (see
+    :func:`distinguishing_keyword`) so the report never shows two identically
+    named topics.
 
     Args:
         topic_keywords: Per-topic ``(term, weight)`` pairs.
@@ -276,7 +368,8 @@ def assign_labels(topic_keywords: Sequence[Sequence[tuple[str, float]]]) -> list
     """
     scored = [label_topic(keywords) for keywords in topic_keywords]
     # A rule may win in several topics; the topic where it scores highest keeps
-    # the plain name, the others are disambiguated by their own top keyword.
+    # the plain name, the others are disambiguated by their most distinguishing
+    # keyword.
     best_owner: dict[str, int] = {}
     for topic_id, (label, score) in enumerate(scored):
         if label is None:
@@ -294,7 +387,8 @@ def assign_labels(topic_keywords: Sequence[Sequence[tuple[str, float]]]) -> list
         elif best_owner[label] == topic_id:
             candidate = label
         else:
-            candidate = f"{label} ({keywords[0][0]})" if keywords else f"{label} ({topic_id})"
+            distinct = distinguishing_keyword(label, keywords)
+            candidate = f"{label} ({distinct})" if distinct else f"{label} ({topic_id})"
         if candidate in seen:
             candidate = f"{candidate} [{topic_id}]"
         seen.add(candidate)
