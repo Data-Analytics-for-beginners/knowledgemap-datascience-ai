@@ -336,6 +336,79 @@ def test_label_topic_uses_the_rule_catalogue() -> None:
     assert score > 0
 
 
+def test_label_topic_breaks_ties_by_specificity() -> None:
+    """On an equal score the rule explaining more keywords wins, not the first one.
+
+    ``SQL та бази даних`` is listed before ``Python: мова та бібліотеки``, so
+    rule order alone would hand this topic to SQL on the strength of one heavy
+    keyword.
+    """
+    label, score = tm.label_topic([("sql", 0.06), ("python", 0.03), ("pandas", 0.03)])
+    assert label == "Python: мова та бібліотеки", label
+    assert abs(score - 0.06) < 1e-9
+
+
+def test_label_topic_separates_the_career_family() -> None:
+    """Interview prep, educational outreach and careers get three distinct names."""
+    interview, _ = tm.label_topic(
+        [("interview", 0.05), ("question", 0.04), ("answer", 0.03), ("prepare", 0.02)]
+    )
+    outreach, _ = tm.label_topic(
+        [("classroom", 0.05), ("student", 0.04), ("scholarship", 0.03), ("teacher", 0.02),
+         ("donate", 0.01)]
+    )
+    career, _ = tm.label_topic(
+        [("skill", 0.05), ("guide", 0.04), ("learning", 0.03), ("discover", 0.02),
+         ("project", 0.01)]
+    )
+    assert interview == "Підготовка до співбесід", interview
+    assert outreach == "Освітні партнерства та благодійність", outreach
+    assert career == "Кар'єра та навчання в Data Science", career
+    assert len({interview, outreach, career}) == 3
+
+
+def test_label_topic_separates_model_comparison_from_applications() -> None:
+    """Two AI topics split by vocabulary instead of sharing one LLM label."""
+    comparison, _ = tm.label_topic(
+        [("claude", 0.05), ("benchmark", 0.04), ("price", 0.03), ("compare", 0.02)]
+    )
+    applications, _ = tm.label_topic(
+        [("application", 0.05), ("example", 0.04), ("database", 0.03)]
+    )
+    assert comparison == "Порівняння AI-моделей", comparison
+    assert applications == "Застосування ML/AI", applications
+
+
+def test_label_topic_keeps_the_generic_llm_label_for_llm_topics() -> None:
+    """The narrower AI rules must not swallow a genuine LLM topic."""
+    label, _ = tm.label_topic(
+        [("llm", 0.06), ("prompt", 0.05), ("rag", 0.04), ("fine-tuning", 0.03)]
+    )
+    assert label == "Великі мовні моделі та генеративний AI", label
+
+
+def test_label_rule_names_are_unique() -> None:
+    """Two rules sharing a name would make ``assign_labels`` unable to tell them apart."""
+    names = [label for label, _ in tm.LABEL_RULES]
+    assert len(set(names)) == len(names)
+
+
+def test_distinguishing_keyword_skips_generic_and_trigger_terms() -> None:
+    """A disambiguating suffix must actually distinguish -- ``(data)`` does not."""
+    assert (
+        tm.distinguishing_keyword(
+            "Кар'єра та навчання в Data Science",
+            [("data", 0.06), ("skill", 0.05), ("interview", 0.04)],
+        )
+        == "interview"
+    )
+    # Every keyword triggers the label: the strongest one is still used.
+    assert (
+        tm.distinguishing_keyword("SQL та бази даних", [("sql", 0.06), ("join", 0.05)]) == "sql"
+    )
+    assert tm.distinguishing_keyword("SQL та бази даних", []) is None
+
+
 def test_label_topic_returns_none_when_nothing_matches() -> None:
     """Unmatched topics fall back to a keyword-derived name."""
     label, score = tm.label_topic([("zzz", 0.1), ("qqq", 0.05)])
